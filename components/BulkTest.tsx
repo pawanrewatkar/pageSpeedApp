@@ -1,14 +1,20 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Download, Play, Upload, X } from 'lucide-react';
+import { Download, FileSpreadsheet, Play, Upload, X } from 'lucide-react';
 import { LIMITS } from '@/lib/config';
 import { siteName } from '@/lib/metrics';
 import type { UrlParseResult } from '@/lib/excel';
 import type { PageInput } from '@/lib/types';
-import { Alert, Button, Card, downloadBlob } from './ui';
+import { Alert, Button, Card, PanelHeader, downloadBlob } from './ui';
 
-export default function BulkTest({ disabled, onStart }: { disabled: boolean; onStart: (pages: PageInput[]) => void }) {
+export default function BulkTest({
+  disabled,
+  onStart,
+}: {
+  disabled: boolean;
+  onStart: (pages: PageInput[]) => void;
+}) {
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<UrlParseResult | null>(null);
   const [error, setError] = useState('');
@@ -49,19 +55,17 @@ export default function BulkTest({ disabled, onStart }: { disabled: boolean; onS
 
   return (
     <Card>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Upload Website URLs</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Upload an Excel file containing a column named <strong>Website URL</strong>. The application will automatically test all listed websites.
-          </p>
-        </div>
+      <PanelHeader
+        icon={<FileSpreadsheet className="h-5 w-5" />}
+        title="Upload Website URLs"
+        description={<>Upload an Excel file containing a column named <strong>Website URL</strong>. The application will automatically test all listed websites.</>}
+      >
         <Button variant="secondary" onClick={downloadTemplate} icon={<Download className="h-4 w-4" />} className="shrink-0">
           Download Sample Template
         </Button>
-      </div>
+      </PanelHeader>
 
-      <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-4 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
+      <label className="mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/30 px-4 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50/70">
         <Upload className="h-6 w-6 text-blue-600" />
         <span className="text-sm font-medium text-slate-700">{fileName || 'Click to choose an .xlsx file'}</span>
         <span className="text-xs text-slate-400">Max {LIMITS.maxUploadBytes / 1024 / 1024} MB · up to {LIMITS.maxUrlsPerUpload} URLs</span>

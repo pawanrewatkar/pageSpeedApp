@@ -1,13 +1,19 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Play, ScanSearch } from 'lucide-react';
+import { Globe, Play, ScanSearch } from 'lucide-react';
 import type { DiscoveryResult } from '@/lib/discover';
 import { normalizeUrl } from '@/lib/urls';
 import { PAGE_TYPE_LABEL, type PageInput, type PageType } from '@/lib/types';
-import { Alert, Button, Card, Input } from './ui';
+import { Alert, Button, Card, Input, PanelHeader } from './ui';
 
-export default function WebsiteTest({ disabled, onStart }: { disabled: boolean; onStart: (pages: PageInput[]) => void }) {
+export default function WebsiteTest({
+  disabled,
+  onStart,
+}: {
+  disabled: boolean;
+  onStart: (pages: PageInput[]) => void;
+}) {
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,12 +57,12 @@ export default function WebsiteTest({ disabled, onStart }: { disabled: boolean; 
 
   return (
     <Card>
-      <h2 className="text-base font-semibold text-slate-900">Test Important Pages of Website</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Finds representative pages (homepage, collections, products, blog, categories and key pages) from the sitemap and homepage links.
-        Respects robots.txt and skips login, cart, checkout, account and search pages.
-      </p>
-      <form onSubmit={discover} className="mt-4 flex flex-col gap-3 sm:flex-row">
+      <PanelHeader
+        icon={<Globe className="h-5 w-5" />}
+        title="Test Important Pages of Website"
+        description="Finds representative pages (homepage, collections, products, blog, categories and key pages) from the sitemap and homepage links. Respects robots.txt and skips login, cart, checkout, account and search pages."
+      />
+      <form onSubmit={discover} className="mt-5 flex flex-col gap-3 sm:flex-row">
         <Input type="text" inputMode="url" placeholder="https://example.com" aria-label="Website homepage URL" value={value} onChange={(e) => setValue(e.target.value)} />
         <Button type="submit" loading={loading} icon={<ScanSearch className="h-4 w-4" />} className="shrink-0">
           {loading ? 'Discovering…' : 'Discover Pages'}

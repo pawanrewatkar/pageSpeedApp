@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { scoreBand, STATUS_LABEL, type ScoreBand } from '@/lib/metrics';
 import type { MetricStatus } from '@/lib/types';
@@ -8,8 +8,8 @@ export const cn = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm',
-  secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50',
+  primary: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg',
+  secondary: 'bg-white text-slate-700 border border-slate-300 shadow-sm hover:bg-slate-50 hover:border-slate-400',
   ghost: 'text-blue-600 hover:bg-blue-50',
   danger: 'bg-white text-red-600 border border-red-200 hover:bg-red-50',
 };
@@ -41,7 +41,32 @@ export function Button({
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('rounded-xl border border-slate-200 bg-white p-5 shadow-sm', className)}>{children}</div>;
+  return <div className={cn('rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/60', className)}>{children}</div>;
+}
+
+/** "Refresh Page": clears all results and inputs and returns to a fresh dashboard. */
+export function RefreshButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button variant="secondary" onClick={onClick} icon={<RotateCcw className="h-4 w-4" />} className="shrink-0">
+      Refresh Page
+    </Button>
+  );
+}
+
+/** Title + description on the left, actions (e.g. Refresh Page) on the right. */
+export function PanelHeader({ icon, title, description, children }: { icon: ReactNode; title: string; description: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">{icon}</div>
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+          <p className="mt-0.5 max-w-2xl text-sm text-slate-500">{description}</p>
+        </div>
+      </div>
+      {children && <div className="flex flex-wrap gap-2 sm:shrink-0">{children}</div>}
+    </div>
+  );
 }
 
 export function Alert({ tone = 'info', children }: { tone?: 'info' | 'error' | 'warning' | 'success'; children: ReactNode }) {

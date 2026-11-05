@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowUp, ExternalLink, FileSpreadsheet, FileText, Monitor, Smartphone } from 'lucide-react';
+import { ExternalLink, FileSpreadsheet, FileText, Monitor, Smartphone } from 'lucide-react';
 import { formatDate, pageOverall, scoreBand, siteName, summarizeRun, deviceStatusLabel } from '@/lib/metrics';
 import { affectedLabel, buildRecommendations } from '@/lib/recommendations';
 import { DEVICE_LABEL, DEVICES, PAGE_TYPE_LABEL, type Device, type PageResult, type TestRun } from '@/lib/types';
-import { Alert, BAND_TEXT, BandBadge, Button, Card, PriorityBadge, ScoreRing, StatusBadge, cn, downloadBlob } from './ui';
+import { Alert, BAND_TEXT, BandBadge, Button, Card, PriorityBadge, RefreshButton, ScoreRing, StatusBadge, cn, downloadBlob } from './ui';
 
 const TABS = ['Overview', 'Mobile Results', 'Desktop Results', 'Detailed Metrics', 'Developer Recommendations'] as const;
 type Tab = (typeof TABS)[number];
@@ -15,7 +15,7 @@ function fileBase(run: TestRun) {
   return `pagespeed-report-${name.replace(/[^a-z0-9.-]/gi, '_')}-${run.startedAt.slice(0, 10)}`;
 }
 
-export default function Results({ run, onBack }: { run: TestRun; onBack: () => void }) {
+export default function Results({ run, onRefresh }: { run: TestRun; onRefresh: () => void }) {
   const [tab, setTab] = useState<Tab>('Overview');
   const [selectedId, setSelectedId] = useState(run.pages[0]?.id);
   const [downloading, setDownloading] = useState<'excel' | 'pdf' | null>(null);
@@ -52,13 +52,13 @@ export default function Results({ run, onBack }: { run: TestRun; onBack: () => v
     <section className="space-y-4" aria-label="Test results">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold text-slate-900">Test Results</h2>
+          <h2 className="bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-2xl font-bold text-transparent">Test Results</h2>
           <p className="text-sm text-slate-500">
             Tested {formatDate(run.startedAt)} · Review the results below, then download the report.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 lg:shrink-0">
-          <Button variant="secondary" icon={<ArrowUp className="h-4 w-4" />} onClick={onBack}>Back to Testing</Button>
+          <RefreshButton onClick={onRefresh} />
           <Button loading={downloading === 'excel'} icon={<FileSpreadsheet className="h-4 w-4" />} onClick={() => download('excel')}>Download Excel Report</Button>
           <Button loading={downloading === 'pdf'} icon={<FileText className="h-4 w-4" />} onClick={() => download('pdf')}>Download PDF Report</Button>
         </div>
