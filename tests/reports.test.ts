@@ -61,7 +61,8 @@ describe('Excel report', () => {
     let headerRow = 0;
     summary.eachRow((row, n) => { if (row.getCell(1).value === 'Website Name') headerRow = n; });
     const header = summary.getRow(headerRow);
-    expect(header.values).toEqual([undefined, 'Website Name', 'Website URL', 'Mobile Score', 'Desktop Score', 'Mobile Status', 'Desktop Status', 'Overall Status', 'Notes']);
+    expect(header.values).toEqual([undefined, 'Website Name', 'Website URL', 'Mobile Score', 'Desktop Score', 'Mobile Status', 'Desktop Status', 'Overall Status']);
+    expect(header.cellCount).toBe(7); // no Notes column
     expect((header.getCell(1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FF1F3864');
     expect(header.getCell(1).font.bold).toBe(true);
     expect(summary.autoFilter).toBeTruthy();
@@ -75,14 +76,16 @@ describe('Excel report', () => {
 
     const failed = summary.getRow(headerRow + 3);
     expect(failed.getCell(7).value).toBe('Failed');
-    expect(String(failed.getCell(8).value)).toContain('FAILED_DOCUMENT_REQUEST');
+    expect(failed.getCell(5).value).toBe('Failed');
+    expect(failed.getCell(6).value).toBe('Failed');
 
     const site = wb.getWorksheet('example.com')!;
     const values: string[] = [];
     site.eachRow((r) => values.push(r.values ? (r.values as unknown[]).slice(1).map((v) => (typeof v === 'object' && v ? (v as { text?: string }).text : v)).join('|') : ''));
-    expect(values).toContain('Device|Metric|Observed Value|Expected Value|Status|Evidence Link');
-    expect(values).toContain('Mobile|Largest Contentful Paint (LCP)|4.8 s|≤ 2.5 s|Fail|PageSpeed Mobile report');
-    expect(values).toContain('Desktop|Largest Contentful Paint (LCP)|1.2 s|≤ 2.5 s|Pass|PageSpeed Desktop report');
+    expect(values).toContain('Device|Metric|Observed Value|Expected Value|Status'); // no Evidence Link column
+    expect(values).toContain('Mobile|Largest Contentful Paint (LCP)|4.8 s|≤ 2.5 s|Fail');
+    expect(values).toContain('Desktop|Largest Contentful Paint (LCP)|1.2 s|≤ 2.5 s|Pass');
+    expect(values.some((v) => v.includes('PageSpeed') || v.includes('pagespeed.web.dev'))).toBe(false);
   });
 
   it('single: one summary worksheet with Mobile and Desktop sections', async () => {
@@ -143,9 +146,13 @@ describe('PDF report', () => {
     expect(raw).toContain('Executive Summary');
     expect(raw).toContain('Failed or Incomplete Tests');
     expect(raw).toContain(`Page ${pages} of ${pages}`);
-    expect(raw).toContain('pagespeed.web.dev/analysis/');
+    expect(raw).not.toContain('pagespeed.web.dev'); // no PageSpeed Insights hyperlinks in the PDF
+    expect(raw).not.toContain('View Mobile report');
     expect(raw).toContain('Developer Recommendations');
     expect(raw).toContain('<= 2.5 s'); // unicode replaced for built-in fonts
+    // "Evidence Snapshot (5 Nov 2026, 10:00)": PDF strings escape brackets as \( \)
+    expect(raw.match(/Evidence Snapshot \\\(\d{1,2} \w{3} 2026, \d{2}:\d{2}\\\)/g)).toHaveLength(3); // page 1: Mobile + Desktop, page 2: Mobile only (its Desktop test failed)
+    expect(raw).toContain('OBSERVED VALUE');
   });
 
   it('builds a single URL report', () => {

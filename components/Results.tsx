@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ExternalLink, FileSpreadsheet, FileText, Monitor, Smartphone } from 'lucide-react';
+import { FileSpreadsheet, FileText, Monitor, Smartphone } from 'lucide-react';
 import { formatDate, pageOverall, scoreBand, siteName, summarizeRun, deviceStatusLabel } from '@/lib/metrics';
 import { affectedLabel, buildRecommendations } from '@/lib/recommendations';
 import { DEVICE_LABEL, DEVICES, PAGE_TYPE_LABEL, type Device, type PageResult, type TestRun } from '@/lib/types';
@@ -229,11 +229,6 @@ function DeviceTable({ pages, device }: { pages: PageResult[]; device: Device })
                 <p className={cn('mt-1 text-xs font-semibold', BAND_TEXT[scoreBand(r?.score)])}>
                   Performance: {r?.score ?? 'N/A'} ({deviceStatusLabel(r?.score)})
                 </p>
-                {r && (
-                  <a href={r.evidenceUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                    Evidence <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
               </td>
             );
             if (!r) {
@@ -271,11 +266,6 @@ function DeviceDetail({ page, device }: { page: PageResult; device: Device }) {
         <h3 className="flex items-center gap-2 font-semibold text-slate-900">
           <Icon className="h-4 w-4 text-blue-600" /> {DEVICE_LABEL[device]}
         </h3>
-        {r && (
-          <a href={r.evidenceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
-            PageSpeed evidence <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        )}
       </div>
       {!r ? (
         <div className="mt-4"><Alert tone="error">{page.errors[device] ? `Test failed: ${page.errors[device]}` : 'Test not completed.'}</Alert></div>

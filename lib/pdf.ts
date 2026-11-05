@@ -3,12 +3,30 @@ import { jsPDF } from 'jspdf';
 import autoTable, { type CellHookData } from 'jspdf-autotable';
 import { deviceStatusLabel, formatDate, pageOverall, scoreBand, siteName, STATUS_LABEL, summarizeRun, type ScoreBand } from './metrics';
 import { buildRecommendations, type Priority } from './recommendations';
-import { DEVICE_LABEL, DEVICES, PAGE_TYPE_LABEL, type MetricStatus, type PageResult, type TestRun } from './types';
+import { DEVICE_LABEL, DEVICES, PAGE_TYPE_LABEL, type Device, type MetricStatus, type PageResult, type TestRun } from './types';
 
 type RGB = [number, number, number];
 const NAVY: RGB = [31, 56, 100];
-const BLUE: RGB = [17, 85, 204];
 const GREY: RGB = [100, 100, 100];
+
+// Colours of the on-screen results table (Tailwind slate/green/orange/red), used for the evidence snapshot.
+const UI = {
+  white: [255, 255, 255] as RGB,
+  border: [226, 232, 240] as RGB,
+  headBg: [248, 250, 252] as RGB,
+  rowLine: [241, 245, 249] as RGB,
+  text: [15, 23, 42] as RGB,
+  muted: [100, 116, 139] as RGB,
+  faint: [148, 163, 184] as RGB,
+  link: [37, 99, 235] as RGB,
+  band: { good: [22, 163, 74], average: [234, 88, 12], poor: [220, 38, 38], na: [148, 163, 184] } as Record<ScoreBand, RGB>,
+  status: {
+    pass: { bg: [240, 253, 244], ring: [187, 247, 208], dot: [34, 197, 94], text: [21, 128, 61] },
+    warning: { bg: [255, 247, 237], ring: [254, 215, 170], dot: [249, 115, 22], text: [194, 65, 12] },
+    fail: { bg: [254, 242, 242], ring: [254, 202, 202], dot: [239, 68, 68], text: [185, 28, 28] },
+    na: { bg: [241, 245, 249], ring: [226, 232, 240], dot: [148, 163, 184], text: [100, 116, 139] },
+  } as Record<MetricStatus, { bg: RGB; ring: RGB; dot: RGB; text: RGB }>,
+};
 const SCORE_RGB: Record<ScoreBand, RGB> = { good: [217, 234, 211], average: [252, 232, 178], poor: [244, 204, 204], na: [238, 238, 238] };
 const STATUS_RGB: Record<MetricStatus, RGB> = { pass: [217, 234, 211], warning: [252, 232, 178], fail: [244, 204, 204], na: [238, 238, 238] };
 const PRIORITY_RGB: Record<Priority, RGB> = { High: [244, 204, 204], Medium: [252, 232, 178], Low: [217, 234, 211] };
@@ -55,12 +73,6 @@ export function buildPdfReport(run: TestRun): jsPDF {
       y += size + 4;
     }
     y += 6;
-  };
-  const linkLine = (label: string, url: string) => {
-    ensure(16);
-    doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...BLUE);
-    doc.textWithLink(pdfText(label), MARGIN, y, { url });
-    y += 14;
   };
   const table = (head: string[], body: (string | number)[][], opts: Parameters<typeof autoTable>[1] = {}) => {
     autoTable(doc, {
@@ -174,10 +186,70 @@ export function buildPdfReport(run: TestRun): jsPDF {
           c.cell.styles.fillColor = c.row.index === 0 ? SCORE_RGB[scoreBand(r.score)] : STATUS_RGB[r.metrics[c.row.index - 1].status];
         },
       });
-      y -= 6;
-      linkLine(`Evidence: View ${DEVICE_LABEL[d]} report on Google PageSpeed Insights`, r.evidenceUrl);
+      addEvidenceSnapshot(p, d);
       y += 6;
     }
+  }
+
+  /** Draws the app's "Mobile/Desktop Results" table exactly as it looks on screen, as an evidence snapshot. */
+  function addEvidenceSnapshot(p: PageResult, device: Device) {
+    const r = p[device]!;
+    const cols = [140, 140, 82, 80, 73]; // Website/Page, Metric, Observed, Expected, Status (= content width)
+    const x = cols.reduce<number[]>((acc, w, i) => [...acc, acc[i] + w], [MARGIN]);
+    const headH = 24;
+    const rowH = 27;
+    const boxH = headH + rowH * r.metrics.length;
+
+    ensure(boxH + 22);
+    doc.setFont('helvetica', 'italic').setFontSize(8).setTextColor(...GREY);
+    doc.text(pdfText(`Evidence Snapshot (${formatDate(r.fetchTime)})`), MARGIN, y);
+    y += 6;
+    const top = y;
+
+    // Card with header row
+    doc.setFillColor(...UI.white).setDrawColor(...UI.border).setLineWidth(0.75);
+    doc.roundedRect(MARGIN, top, contentW, boxH, 6, 6, 'FD');
+    doc.setFillColor(...UI.headBg).rect(MARGIN + 0.5, top + 0.5, contentW - 1, headH - 0.5, 'F');
+    doc.setDrawColor(...UI.border).line(MARGIN, top + headH, MARGIN + contentW, top + headH);
+    doc.setFont('helvetica', 'bold').setFontSize(7).setTextColor(...UI.muted);
+    ['WEBSITE/PAGE', 'METRIC', 'OBSERVED VALUE', 'EXPECTED VALUE', 'STATUS'].forEach((h, i) => doc.text(h, x[i] + 10, top + 15));
+    doc.setDrawColor(...UI.rowLine).line(x[1], top + headH, x[1], top + boxH);
+
+    // Website/Page cell (spans all metric rows)
+    const fit = (s: string, w: number) => (doc.splitTextToSize(pdfText(s), w) as string[])[0];
+    let cy = top + headH + 16;
+    doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(...UI.text);
+    doc.text(fit(p.name, cols[0] - 20), x[0] + 10, cy);
+    doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...UI.muted);
+    doc.text(fit(p.url, cols[0] - 20), x[0] + 10, (cy += 11));
+    doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(...UI.band[scoreBand(r.score)]);
+    const perfLines = (doc.splitTextToSize(`Performance: ${r.score ?? 'N/A'} (${deviceStatusLabel(r.score)})`, cols[0] - 20) as string[]).slice(0, 2);
+    doc.text(perfLines, x[0] + 10, (cy += 13), { lineHeightFactor: 1.3 });
+
+    // Metric rows
+    r.metrics.forEach((m, i) => {
+      const rowTop = top + headH + i * rowH;
+      const mid = rowTop + rowH / 2 + 3;
+      if (i > 0) doc.setDrawColor(...UI.rowLine).line(x[1], rowTop, MARGIN + contentW, rowTop);
+      doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...UI.text);
+      doc.text(m.label, x[1] + 10, mid);
+      doc.setTextColor(...UI.faint).text(`(${m.short})`, x[1] + 10 + doc.getTextWidth(m.label) + 3, mid);
+      doc.setFont('helvetica', 'bold').setTextColor(...UI.text).text(pdfText(m.observed), x[2] + 10, mid);
+      doc.setFont('helvetica', 'normal').setTextColor(...UI.muted).text(pdfText(m.expected), x[3] + 10, mid);
+
+      // Status pill with dot
+      const s = UI.status[m.status];
+      const label = STATUS_LABEL[m.status];
+      doc.setFont('helvetica', 'bold').setFontSize(7);
+      const pillW = doc.getTextWidth(label) + 20;
+      const pillX = x[4] + 8;
+      doc.setFillColor(...s.bg).setDrawColor(...s.ring).setLineWidth(0.5);
+      doc.roundedRect(pillX, mid - 9, pillW, 13, 6.5, 6.5, 'FD');
+      doc.setFillColor(...s.dot).circle(pillX + 7, mid - 2.5, 1.8, 'F');
+      doc.setTextColor(...s.text).text(label, pillX + 12, mid);
+    });
+
+    y = top + boxH + 14;
   }
 
   function addRecommendations(p: PageResult) {

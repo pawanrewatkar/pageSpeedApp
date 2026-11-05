@@ -145,12 +145,8 @@ function link(cell: ExcelJS.Cell, url: string, text = url) {
 
 // ---------------------------------------------------------------- report sheets
 
-const SUMMARY_HEADERS = ['Website Name', 'Website URL', 'Mobile Score', 'Desktop Score', 'Mobile Status', 'Desktop Status', 'Overall Status', 'Notes'];
-const DETAIL_HEADERS = ['Device', 'Metric', 'Observed Value', 'Expected Value', 'Status', 'Evidence Link'];
-
-function errorNote(p: PageResult): string {
-  return DEVICES.filter((d) => p.errors[d]).map((d) => `${DEVICE_LABEL[d]} failed: ${p.errors[d]}`).join(' | ') || (p.status === 'cancelled' ? 'Cancelled' : '');
-}
+const SUMMARY_HEADERS = ['Website Name', 'Website URL', 'Mobile Score', 'Desktop Score', 'Mobile Status', 'Desktop Status', 'Overall Status'];
+const DETAIL_HEADERS = ['Device', 'Metric', 'Observed Value', 'Expected Value', 'Status'];
 
 function addSummaryTable(ws: ExcelJS.Worksheet, run: TestRun): { headerRow: number; lastRow: number } {
   const header = ws.addRow(run.mode === 'website' ? ['Page Type', ...SUMMARY_HEADERS] : SUMMARY_HEADERS);
@@ -166,7 +162,6 @@ function addSummaryTable(ws: ExcelJS.Worksheet, run: TestRun): { headerRow: numb
       p.mobile ? deviceStatusLabel(p.mobile.score) : 'Failed',
       p.desktop ? deviceStatusLabel(p.desktop.score) : 'Failed',
       overall.label,
-      errorNote(p),
     ];
     const row = ws.addRow(run.mode === 'website' ? [p.pageType ? PAGE_TYPE_LABEL[p.pageType] : '', ...values] : values);
     styleBody(row);
@@ -189,22 +184,20 @@ function addDetailTable(ws: ExcelJS.Worksheet, p: PageResult, devices = DEVICES)
   for (const d of devices) {
     const r = p[d];
     if (!r) {
-      const row = ws.addRow([DEVICE_LABEL[d], 'All metrics', 'N/A', '', `Test failed: ${p.errors[d] || 'not run'}`, '']);
+      const row = ws.addRow([DEVICE_LABEL[d], 'All metrics', 'N/A', '', `Test failed: ${p.errors[d] || 'not run'}`]);
       styleBody(row);
       row.getCell(5).fill = fill(STATUS_FILL.fail);
       continue;
     }
-    const scoreRow = ws.addRow([DEVICE_LABEL[d], 'Performance Score', r.score ?? 'N/A', '90 - 100', deviceStatusLabel(r.score), '']);
+    const scoreRow = ws.addRow([DEVICE_LABEL[d], 'Performance Score', r.score ?? 'N/A', '90 - 100', deviceStatusLabel(r.score)]);
     styleBody(scoreRow);
     scoreRow.getCell(3).fill = fill(SCORE_FILL[scoreBand(r.score)]);
     scoreRow.getCell(5).fill = fill(SCORE_FILL[scoreBand(r.score)]);
-    link(scoreRow.getCell(6), r.evidenceUrl, `PageSpeed ${DEVICE_LABEL[d]} report`);
     for (const m of r.metrics) {
-      const row = ws.addRow([DEVICE_LABEL[d], `${m.label} (${m.short})`, m.observed, m.expected, STATUS_LABEL[m.status], '']);
+      const row = ws.addRow([DEVICE_LABEL[d], `${m.label} (${m.short})`, m.observed, m.expected, STATUS_LABEL[m.status]]);
       styleBody(row);
       row.getCell(5).fill = fill(STATUS_FILL[m.status]);
       row.getCell(5).font = { bold: true };
-      link(row.getCell(6), r.evidenceUrl, `PageSpeed ${DEVICE_LABEL[d]} report`);
     }
   }
 }
@@ -229,8 +222,8 @@ function uniqueSheetName(name: string, used: Set<string>): string {
   return n;
 }
 
-const SUMMARY_WIDTHS = [28, 45, 13, 13, 20, 20, 24, 40];
-const DETAIL_WIDTHS = [26, 34, 16, 16, 26, 28];
+const SUMMARY_WIDTHS = [28, 45, 13, 13, 20, 20, 24];
+const DETAIL_WIDTHS = [26, 34, 16, 16, 26];
 
 export async function buildExcelReport(run: TestRun): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
